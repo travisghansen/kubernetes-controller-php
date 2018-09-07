@@ -1,0 +1,23 @@
+{
+    "name": "travisghansen/kubernetes-controller-php",
+    "type": "library",
+    "description": "reusable Kubernetes controller base",
+    "license": "Apache-2.0",
+    "keywords": ["kubernetes", "api", "client", "k8s", "php", "controller"],
+    "homepage": "https://github.com/travisghansen/kubernetes-controller-php/",
+    "authors": [
+        {
+            "name" : "Travis Glenn Hansen"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.0",
+        "ext-yaml": "*",
+        "ext-pcntl": "*",
+        "travisghansen/kubernetes-client-php": "*"
+    },
+    "autoload": {
+        "psr-0": {"KubernetesController\\": "src/"}
+    },
+    "minimum-stability": "dev"
+}
