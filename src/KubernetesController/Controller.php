@@ -426,7 +426,7 @@ class Controller
 
         while (true) {
             usleep(100 * 1000);
-            $watches->startSync();
+            $watches->start(1);
 
             // do NOT perform anything until config is loaded
             if (!$this->getConfigLoaded()) {
