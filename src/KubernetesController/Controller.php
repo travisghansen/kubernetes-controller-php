@@ -322,13 +322,13 @@ class Controller
 
     /**
      * A user-supplied identifier used by the controller/plugins to identify resources belonging to this instance of the
-     * controller
+     * controller.  It should be unique on a per-pfsense/per-cluster basis.
      *
      * @return string
      */
-    public function getClusterId()
+    public function getControllerId()
     {
-        return $this->state['config']['clusterid'];
+        return $this->state['config']['controllerid'];
     }
 
     /**
@@ -349,7 +349,7 @@ class Controller
      */
     public function isManagedResource($name)
     {
-        $needle = $this->getClusterId();
+        $needle = $this->getControllerId();
         $length = strlen($needle);
         return (substr($name, 0, $length) === $needle);
     }
@@ -378,9 +378,11 @@ class Controller
                     $plugin = new $className($this);
                     $this->plugins[] = $plugin;
                     $plugin->init();
-                    break;
+                    continue 2;
                 }
             }
+
+            $this->log("plugin ${pluginId} is not registered with the controller");
         }
     }
 
