@@ -15,6 +15,13 @@ use KubernetesController\Plugin\AbstractPlugin;
 class Controller
 {
     /**
+     * Controller ID
+     *
+     * @var string
+     */
+    private $controllerId;
+
+    /**
      * Namespace of the controller ConfigMap
      *
      * @var string
@@ -116,6 +123,10 @@ class Controller
     {
         $this->name = $name;
         $this->kubernetesClient = $kubernetesClient;
+
+        if (isset($options['controllerId'])) {
+            $this->controllerId = $options['controllerId'];
+        }
 
         if (isset($options['configMapNamespace'])) {
             $this->configMapNamespace = $options['configMapNamespace'];
@@ -321,6 +332,31 @@ class Controller
     }
 
     /**
+     * Get the list of currently loaded/enabled plugins.  This is useful if plugins need to access each other.
+     *
+     * @return AbstractPlugin[]
+     */
+    public function getPlugins()
+    {
+        return $this->plugins;
+    }
+
+    /**
+     * Get a laoded/enabled plugin by IDs
+     *
+     * @param $id
+     * @return AbstractPlugin
+     */
+    public function getPluginById($id)
+    {
+        foreach ($this->plugins as $plugin) {
+            if ($plugin::getPluginId() == $id) {
+                return $plugin;
+            }
+        }
+    }
+
+    /**
      * A user-supplied identifier used by the controller/plugins to identify resources belonging to this instance of the
      * controller.  It should be unique on a per-pfsense/per-cluster basis.
      *
@@ -328,7 +364,11 @@ class Controller
      */
     public function getControllerId()
     {
-        return $this->state['config']['controllerid'];
+        if (!empty($this->state['config']['controller-id'])) {
+            return $this->state['config']['controller-id'];
+        }
+
+        return $this->controllerId;
     }
 
     /**
