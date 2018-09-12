@@ -238,7 +238,7 @@ abstract class AbstractPlugin implements PluginInterface
      *
      * @return array
      */
-    final protected function getStore()
+    final public function getStore()
     {
         return $this->getController()->getStoreValue(self::getPluginId());
     }
