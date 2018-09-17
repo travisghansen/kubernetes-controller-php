@@ -156,7 +156,7 @@ class Store
     private function getConfigMapWatchCallback()
     {
         return function ($event, $watch) {
-            $this->controller->logEvent($event);
+            //$this->controller->logEvent($event);
             switch ($event['type']) {
                 case 'ADDED':
                 case 'MODIFIED':
