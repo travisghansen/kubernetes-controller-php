@@ -18,6 +18,13 @@ abstract class AbstractPlugin implements PluginInterface
     private $actionRequired = false;
 
     /**
+     * Time when actionRequired changed from false to true
+     *
+     * @var int
+     */
+    private $actionRequiredTime;
+
+    /**
      * Controller instance
      *
      * @var \KubernetesController\Controller
@@ -84,6 +91,9 @@ abstract class AbstractPlugin implements PluginInterface
      */
     final protected function delayedAction()
     {
+        if ($this->actionRequired !== true) {
+            $this->actionRequiredTime = time();
+        }
         $this->actionRequired = true;
     }
 
@@ -159,6 +169,16 @@ abstract class AbstractPlugin implements PluginInterface
     final public function getActionRequired()
     {
         return $this->actionRequired;
+    }
+
+    /**
+     * Time actionRequired moved from false to true
+     *
+     * @return int
+     */
+    final public function getActionRequiredTime()
+    {
+        return $this->actionRequiredTime;
     }
 
     /**
@@ -252,5 +272,25 @@ abstract class AbstractPlugin implements PluginInterface
     final protected function saveStore($data)
     {
         return $this->getController()->setStoreValue(self::getPluginId(), $data);
+    }
+
+    /**
+     * If desired to use settle time override this method
+     *
+     * @return int
+     */
+    public function getSettleTime()
+    {
+        return 0;
+    }
+
+    /**
+     * If desired to use throttle time override this method
+     *
+     * @return int
+     */
+    public function getThrottleTime()
+    {
+        return 0;
     }
 }

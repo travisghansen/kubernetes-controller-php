@@ -499,11 +499,30 @@ class Controller
                 $plugin->postReadWatches();
 
                 if ($plugin->getActionRequired()) {
+                    // be patient in failure scenarios
                     if (!$plugin->getLastActionSuccess() && ((time() - $this->failedActionWaitTime) <= $plugin->getLastActionAttemptTime())) {
                         continue;
-                    } else {
-                        $plugin->invokeAction();
                     }
+
+                    // wait for settle time
+                    $settleTime = $plugin->getSettleTime();
+                    $actionRequiredTime = $plugin->getActionRequiredTime();
+                    if ($settleTime > 0 &&
+                        $actionRequiredTime > 0 &&
+                        ((time() - $actionRequiredTime) <= $settleTime)) {
+                        continue;
+                    }
+
+                    // wait for throttle time
+                    $throttleTime = $plugin->getThrottleTime();
+                    $lastActionAttemptTime = $plugin->getLastActionAttemptTime();
+                    if ($throttleTime > 0 &&
+                        $lastActionAttemptTime > 0 &&
+                        ((time() - $lastActionAttemptTime) <= $throttleTime)) {
+                        continue;
+                    }
+
+                    $plugin->invokeAction();
                 }
             }
 

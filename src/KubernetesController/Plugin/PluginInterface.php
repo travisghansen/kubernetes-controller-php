@@ -57,4 +57,27 @@ interface PluginInterface
      * @return bool
      */
     public function doAction();
+
+    /**
+     * Time (in seconds) the plugin should wait after delayedAction has been invoked to trigger action.  This is helpful
+     * to prevent too much flapping due to a flurry of k8s activity for plugins whose actions are idempotent.
+     *
+     * For example, if several k8s resources are deleted in rapid succession each triggering an action.  This allows the
+     * plugin to wait for those events to calm down and then do a single update.
+     *
+     * Only applicable if > 0
+     *
+     * @return int
+     */
+    public function getSettleTime();
+
+    /**
+     * Time (in seconds) the plugin should wait between invocations of doAction.  This is helpful when actions are
+     * idempotent and you want to keep activity down due to potentially high volume.
+     *
+     * Only applicable if > 0
+     *
+     * @return int
+     */
+    public function getThrottleTime();
 }
