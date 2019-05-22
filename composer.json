@@ -14,7 +14,7 @@
         "php": ">=7.2.0",
         "ext-yaml": "*",
         "ext-pcntl": "*",
-        "travisghansen/kubernetes-client-php": "*"
+        "travisghansen/kubernetes-client-php": "0.1.*"
     },
     "autoload": {
         "psr-0": {"KubernetesController\\": "src/"}
