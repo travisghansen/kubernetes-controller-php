@@ -114,7 +114,7 @@ class Store
             // check for success
             $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps", 'POST', [], $data);
             if ($response['status'] == 'Failure') {
-                $this->log($response['message']);
+                $this->controller->log($response['message']);
                 return;
             }
         }
