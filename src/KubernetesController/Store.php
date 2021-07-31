@@ -198,7 +198,7 @@ class Store
         ];
 
         $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps/${storeName}", 'PATCH', [], $data);
-        if ($response['status'] == 'Failure') {
+        if (isset($response['status']) && $response['status'] == 'Failure') {
             $this->controller->log($response['message']);
 
             return false;
