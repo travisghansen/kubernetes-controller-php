@@ -101,7 +101,7 @@ class Store
 
         // check for ConfigMap existence
         $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps/${storeName}");
-        if ($response['status'] == 'Failure') {
+        if (array_key_exists('status', $response) && $response['status'] == 'Failure') {
             // create ConfigMap
             $data = [
                 'kind' => 'ConfigMap',

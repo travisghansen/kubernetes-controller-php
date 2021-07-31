@@ -306,7 +306,7 @@ class Controller
      */
     public function logEvent($event)
     {
-        $objectPath = $event['object']['apiVersion'];
+        $objectPath = '/'.$event['object']['apiVersion'];
         if (array_key_exists('namespace', $event['object']['metadata'])) {
             $objectPath .= '/namespaces/' . $event['object']['metadata']['namespace'];
         }
