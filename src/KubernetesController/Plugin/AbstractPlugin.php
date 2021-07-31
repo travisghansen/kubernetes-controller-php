@@ -147,7 +147,14 @@ abstract class AbstractPlugin implements PluginInterface
      */
     final protected function logEvent($event)
     {
-        $this->log($event['object']['metadata']['selfLink'].' '.$event['type'].' - '.$event['object']['metadata']['resourceVersion']);
+        $objectPath = $event['object']['apiVersion'];
+        if (array_key_exists('namespace', $event['object']['metadata'])) {
+            $objectPath .= '/namespaces/' . $event['object']['metadata']['namespace'];
+        }
+        $objectPath .= '/'. $event['object']['kind'];
+        $objectPath .= '/'. $event['object']['metadata']['name'];
+
+        $this->log($objectPath.' '.$event['type'].' - '.$event['object']['metadata']['resourceVersion']);
     }
 
     /**
