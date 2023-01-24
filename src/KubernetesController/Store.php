@@ -100,7 +100,7 @@ class Store
         $storeName = $this->name;
 
         // check for ConfigMap existence
-        $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps/${storeName}");
+        $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps/{$storeName}");
         if (array_key_exists('status', $response) && $response['status'] == 'Failure') {
             // create ConfigMap
             $data = [
@@ -112,7 +112,7 @@ class Store
             ];
 
             // check for success
-            $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps", 'POST', [], $data);
+            $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps", 'POST', [], $data);
             if ($response['status'] == 'Failure') {
                 $this->controller->log($response['message']);
                 return;
@@ -131,7 +131,7 @@ class Store
         $params = [
             'resourceVersion' => $response['metadata']['resourceVersion'],
         ];
-        $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/${storeNamespace}/configmaps/${storeName}", $params, $this->getConfigMapWatchCallback());
+        $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/{$storeNamespace}/configmaps/{$storeName}", $params, $this->getConfigMapWatchCallback());
         $this->addWatch($watch);
 
         $this->initialized = true;
@@ -197,7 +197,7 @@ class Store
             ],
         ];
 
-        $response = $kubernetesClient->request("/api/v1/namespaces/${storeNamespace}/configmaps/${storeName}", 'PATCH', [], $data);
+        $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps/{$storeName}", 'PATCH', [], $data);
         if (isset($response['status']) && $response['status'] == 'Failure') {
             $this->controller->log($response['message']);
 

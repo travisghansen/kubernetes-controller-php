@@ -137,7 +137,7 @@ abstract class AbstractPlugin implements PluginInterface
     final protected function log($message)
     {
         $id = self::getPluginId();
-        $this->getController()->log("plugin (${id}): ".$message);
+        $this->getController()->log("plugin ({$id}): ".$message);
     }
 
     /**

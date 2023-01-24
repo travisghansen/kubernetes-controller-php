@@ -429,7 +429,7 @@ class Controller
                 }
             }
 
-            $this->log("plugin ${pluginId} is not registered with the controller");
+            $this->log("plugin {$pluginId} is not registered with the controller");
         }
     }
 
@@ -470,7 +470,7 @@ class Controller
         $storeName = $this->getStoreName();
 
         //controller config
-        $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/${configMapNamespace}/configmaps/${configMapName}", [], $this->getConfigMapWatchCallback());
+        $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/{$configMapNamespace}/configmaps/{$configMapName}", [], $this->getConfigMapWatchCallback());
         $watches->addWatch($watch);
 
         while (true) {
@@ -479,7 +479,7 @@ class Controller
 
             // do NOT perform anything until config is loaded
             if (!$this->getConfigLoaded()) {
-                $this->log("waiting for ConfigMap ${configMapNamespace}/${configMapName} to be present and valid");
+                $this->log("waiting for ConfigMap {$configMapNamespace}/{$configMapName} to be present and valid");
                 sleep(5);
                 continue;
             }
@@ -487,7 +487,7 @@ class Controller
             // do NOT perform anything until store is ready
             if ($storeEnabled) {
                 if (!$this->store->initialized()) {
-                    $this->log("waiting for store ConfigMap ${storeNamespace}/${storeName} to be present and valid");
+                    $this->log("waiting for store ConfigMap {$storeNamespace}/{$storeName} to be present and valid");
                     $this->store->init();
                     sleep(5);
                     continue;
