@@ -71,6 +71,7 @@ $kubernetesClient = new KubernetesClient\Client($config);
 $controllerName = 'sample-controller';
 $options = [
     //'controllerId' => 'some-controller-id',
+    //'configMapEnabled' => true,
     //'configMapNamespace' => 'kube-system',
     //'configMapName' => $controllerName.'-controller-config',
     //'storeEnabled' => true,

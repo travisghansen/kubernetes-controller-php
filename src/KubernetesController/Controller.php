@@ -92,6 +92,11 @@ class Controller
     private $store;
 
     /**
+     * Whether the config should be loaded from configMap
+     */
+    private $configMapEnabled = true;
+
+    /**
      * Whether the store should be usable by plugins
      *
      * @var bool
@@ -126,6 +131,10 @@ class Controller
 
         if (isset($options['controllerId'])) {
             $this->controllerId = $options['controllerId'];
+        }
+
+        if (isset($options['configMapEnabled'])) {
+            $this->configMapEnabled = (bool) $options['configMapEnabled'];
         }
 
         if (isset($options['configMapNamespace'])) {
@@ -323,6 +332,9 @@ class Controller
      */
     private function getConfigLoaded()
     {
+        if (!isset($this->state['config'])) {
+            return false;
+        }
         return (bool) $this->state['config'];
     }
 
@@ -379,6 +391,16 @@ class Controller
     }
 
     /**
+     * If configMap is enabled
+     *
+     * @return bool
+     */
+    public function getConfigMapEnabled()
+    {
+        return $this->configMapEnabled;
+    }
+
+    /**
      * If store is enabled
      *
      * @return bool
@@ -399,6 +421,25 @@ class Controller
         $needle = $this->getControllerId();
         $length = strlen($needle);
         return (substr($name, 0, $length) === $needle);
+    }
+
+    public function setConfig($config)
+    {
+        if (isset($this->state['config'])) {
+            $this->state['deleted_config'] = $this->state['config'];
+        }
+
+        if (!is_array($config)) {
+            $config = yaml_parse($config);
+        }
+
+        $this->state['config'] = $config;
+
+        if (empty($config)) {
+            $this->onConfigUnloaded();
+        } else {
+            $this->onConfigLoaded();
+        }
     }
 
     /**
@@ -454,6 +495,7 @@ class Controller
         });
 
         $kubernetesClient = $this->getKubernetesClient();
+        $configMapEnabled = $this->getConfigMapEnabled();
         $storeEnabled = $this->getStoreEnabled();
 
         if ($storeEnabled) {
@@ -470,8 +512,10 @@ class Controller
         $storeName = $this->getStoreName();
 
         //controller config
-        $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/{$configMapNamespace}/configmaps/{$configMapName}", [], $this->getConfigMapWatchCallback());
-        $watches->addWatch($watch);
+        if ($configMapEnabled) {
+            $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/{$configMapNamespace}/configmaps/{$configMapName}", [], $this->getConfigMapWatchCallback());
+            $watches->addWatch($watch);
+        }
 
         while (true) {
             usleep(100 * 1000);
@@ -479,8 +523,13 @@ class Controller
 
             // do NOT perform anything until config is loaded
             if (!$this->getConfigLoaded()) {
-                $this->log("waiting for ConfigMap {$configMapNamespace}/{$configMapName} to be present and valid");
-                sleep(5);
+                if ($configMapEnabled) {
+                    $this->log("waiting for ConfigMap {$configMapNamespace}/{$configMapName} to be present and valid");
+                    sleep(5);
+                } else {
+                    $this->log("waiting for config to be present and valid");
+                    throw new \Exception("config must be set manually");
+                }
                 continue;
             }
 
@@ -551,13 +600,11 @@ class Controller
             switch ($event['type']) {
                 case 'ADDED':
                 case 'MODIFIED':
-                    $this->state['config'] = yaml_parse($event['object']['data']['config']);
-                    $this->onConfigLoaded();
+                    $this->setConfig(yaml_parse($event['object']['data']['config']));
                     break;
                 case 'DELETED':
-                    $this->state['deleted_config'] = yaml_parse($event['object']['data']['config']);
-                    $this->state['config'] = null;
-                    $this->onConfigUnloaded();
+                    //$this->state['deleted_config'] = yaml_parse($event['object']['data']['config']);
+                    $this->setConfig(null);
                     break;
             }
         };

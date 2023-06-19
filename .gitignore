@@ -13,6 +13,10 @@
 /vendor
 composer.lock
 
+# dev
+
+/dev
+
 # code style
 /php-cs-fixer.phar
 .php_cs.cache
