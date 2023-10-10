@@ -2,6 +2,8 @@
 
 namespace KubernetesController;
 
+use KubernetesClient\Dotty\DotAccess;
+
 /**
  * Used to provide persistent storage to the controller and plugins.  Should not be used directly by plugins but rather
  * plugins should use the appropriate methods on the plugin itself (setStore() and saveStore()) which automatically
@@ -101,7 +103,7 @@ class Store
 
         // check for ConfigMap existence
         $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps/{$storeName}");
-        if (array_key_exists('status', $response) && $response['status'] == 'Failure') {
+        if (DotAccess::get($response, 'status', null) == 'Failure') {
             // create ConfigMap
             $data = [
                 'kind' => 'ConfigMap',
@@ -113,23 +115,32 @@ class Store
 
             // check for success
             $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps", 'POST', [], $data);
-            if ($response['status'] == 'Failure') {
-                $this->controller->log($response['message']);
+            if (DotAccess::get($response, 'status') == 'Failure') {
+                $this->controller->log(DotAccess::get($response, 'message'));
                 return;
             }
         }
 
         // load initial data
-        if (!empty($response['data'])) {
-            array_walk($response['data'], function (&$item, $key) {
-                $item = json_decode($item, true);
-            });
+        $data = DotAccess::get($event, 'object.data', null);
+        if (!empty($data)) {
+            if (is_array($data)) {
+                array_walk($data, function (&$item, $key) {
+                    $item = json_decode($item, true);
+                });
+            }
+
+            if (is_object($data)) {
+                foreach (DotAccess::get($event, 'object.data') as &$item) {
+                    $item = json_decode($item, true);
+                }
+            }
         }
-        $this->data = $response['data'];
+        $this->data = $data;
 
         // create watch
         $params = [
-            'resourceVersion' => $response['metadata']['resourceVersion'],
+            'resourceVersion' => DotAccess::get($response, 'metadata.resourceVersion'),
         ];
         $watch = $kubernetesClient->createWatch("/api/v1/watch/namespaces/{$storeNamespace}/configmaps/{$storeName}", $params, $this->getConfigMapWatchCallback());
         $this->addWatch($watch);
@@ -160,12 +171,21 @@ class Store
             switch ($event['type']) {
                 case 'ADDED':
                 case 'MODIFIED':
-                    if (!empty($event['object']['data'])) {
-                        array_walk($event['object']['data'], function (&$item, $key) {
-                            $item = json_decode($item, true);
-                        });
+                    $data = DotAccess::get($event, 'object.data', null);
+                    if (!empty(DotAccess::get($event, 'object.data'))) {
+                        if (is_array($data)) {
+                            array_walk($data, function (&$item, $key) {
+                                $item = json_decode($item, true);
+                            });
+                        }
+
+                        if (is_object($data)) {
+                            foreach (DotAccess::get($event, 'object.data') as &$item) {
+                                $item = json_decode($item, true);
+                            }
+                        }
                     }
-                    $this->data = $event['object']['data'];
+                    $this->data = $data;
                     break;
                 case 'DELETED':
                     $this->data = null;
@@ -198,8 +218,8 @@ class Store
         ];
 
         $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps/{$storeName}", 'PATCH', [], $data);
-        if (isset($response['status']) && $response['status'] == 'Failure') {
-            $this->controller->log($response['message']);
+        if (DotAccess::get($response, 'status') == 'Failure') {
+            $this->controller->log(DotAccess::get($response, 'message'));
 
             return false;
         }
@@ -215,6 +235,6 @@ class Store
      */
     public function get($key)
     {
-        return $this->data[$key] ?? null;
+        return DotAccess::get($this->data, $key,null);
     }
 }

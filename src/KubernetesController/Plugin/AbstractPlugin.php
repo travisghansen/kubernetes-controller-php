@@ -2,6 +2,8 @@
 
 namespace KubernetesController\Plugin;
 
+use KubernetesClient\Dotty\DotAccess;
+
 /**
  * All plugins should derive from this class.  It provides the basic needs for loops and other utilities.
  *
@@ -147,14 +149,14 @@ abstract class AbstractPlugin implements PluginInterface
      */
     final protected function logEvent($event)
     {
-        $objectPath = '/'.$event['object']['apiVersion'];
-        if (array_key_exists('namespace', $event['object']['metadata'])) {
-            $objectPath .= '/namespaces/' . $event['object']['metadata']['namespace'];
+        $objectPath = '/'.DotAccess::get($event, 'object.apiVersion');
+        if (DotAccess::get($event, 'object.metadata', null)) {
+            $objectPath .= '/namespaces/' . DotAccess::get($event, 'object.metadata.namespace');
         }
-        $objectPath .= '/'. $event['object']['kind'];
-        $objectPath .= '/'. $event['object']['metadata']['name'];
+        $objectPath .= '/'. DotAccess::get($event, 'object.kind');
+        $objectPath .= '/'. DotAccess::get($event, 'object.metadata.name');
 
-        $this->log($objectPath.' '.$event['type'].' - '.$event['object']['metadata']['resourceVersion']);
+        $this->log($objectPath.' '.DotAccess::get($event, 'type').' - '.DotAccess::get($event, 'object.metadata.resourceVersion'));
     }
 
     /**
