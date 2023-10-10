@@ -3,6 +3,7 @@
 namespace KubernetesController;
 
 use KubernetesController\Plugin\AbstractPlugin;
+use KubernetesClient\Dotty\DotAccess;
 
 /**
  * Goals:
@@ -315,14 +316,15 @@ class Controller
      */
     public function logEvent($event)
     {
-        $objectPath = '/'.$event['object']['apiVersion'];
-        if (array_key_exists('namespace', $event['object']['metadata'])) {
-            $objectPath .= '/namespaces/' . $event['object']['metadata']['namespace'];
+        $objectPath = '/'.DotAccess::get($event, 'object.apiVersion');
+        $ns = DotAccess::get($event, 'object.metadata.namespace', null);
+        if ($ns) {
+            $objectPath .= '/namespaces/' . $ns;
         }
-        $objectPath .= '/'. $event['object']['kind'];
-        $objectPath .= '/'. $event['object']['metadata']['name'];
+        $objectPath .= '/'. DotAccess::get($event, 'object.kind');
+        $objectPath .= '/'. DotAccess::get($event, 'object.metadata.name');
 
-        $this->log($objectPath.' '.$event['type'].' - '.$event['object']['metadata']['resourceVersion']);
+        $this->log($objectPath.' '.DotAccess::get($event, 'type').' - '.DotAccess::get($event, 'object.metadata.resourceVersion'));
     }
 
     /**
@@ -517,75 +519,86 @@ class Controller
             $watches->addWatch($watch);
         }
 
-        while (true) {
-            usleep(100 * 1000);
-            $watches->start(1);
-
-            // do NOT perform anything until config is loaded
-            if (!$this->getConfigLoaded()) {
-                if ($configMapEnabled) {
-                    $this->log("waiting for ConfigMap {$configMapNamespace}/{$configMapName} to be present and valid");
-                    sleep(5);
-                } else {
-                    $this->log("waiting for config to be present and valid");
-                    throw new \Exception("config must be set manually");
-                }
-                continue;
+        if (isset($_ENV['USE_REACTPHP_LOOP']) && $_ENV['USE_REACTPHP_LOOP'] == '1' && class_exists('\React\EventLoop\Loop')) {
+            \React\EventLoop\Loop::addPeriodicTimer(0.1, function () use ($watches, $configMapEnabled, $configMapNamespace, $configMapName, $storeNamespace, $storeName, $storeEnabled) {
+                $this->mainTick($watches, $configMapEnabled, $configMapNamespace, $configMapName, $storeNamespace, $storeName, $storeEnabled);
+            });
+        } else {
+            while (true) {
+                // 0.1 seconds
+                usleep(100 * 1000);
+                $this->mainTick($watches, $configMapEnabled, $configMapNamespace, $configMapName, $storeNamespace, $storeName, $storeEnabled);
             }
+        }
+    }
 
-            // do NOT perform anything until store is ready
-            if ($storeEnabled) {
-                if (!$this->store->initialized()) {
-                    $this->log("waiting for store ConfigMap {$storeNamespace}/{$storeName} to be present and valid");
-                    $this->store->init();
-                    sleep(5);
+    private function mainTick($watches, $configMapEnabled, $configMapNamespace, $configMapName, $storeNamespace, $storeName, $storeEnabled) {
+        $watches->start(1);
+
+        // do NOT perform anything until config is loaded
+        if (!$this->getConfigLoaded()) {
+            if ($configMapEnabled) {
+                $this->log("waiting for ConfigMap {$configMapNamespace}/{$configMapName} to be present and valid");
+                sleep(5);
+            } else {
+                $this->log("waiting for config to be present and valid");
+                throw new \Exception("config must be set manually");
+            }
+            return;
+        }
+
+        // do NOT perform anything until store is ready
+        if ($storeEnabled) {
+            if (!$this->store->initialized()) {
+                $this->log("waiting for store ConfigMap {$storeNamespace}/{$storeName} to be present and valid");
+                $this->store->init();
+                sleep(5);
+                return;
+            }
+        }
+
+        // update store data
+        if ($storeEnabled) {
+            $this->store->readWatches();
+        }
+
+        // process plugins
+        foreach ($this->plugins as $plugin) {
+            $plugin->preReadWatches();
+            $plugin->readWatches();
+            $plugin->postReadWatches();
+
+            if ($plugin->getActionRequired()) {
+                // be patient in failure scenarios
+                if (!$plugin->getLastActionSuccess() && ((time() - $this->failedActionWaitTime) <= $plugin->getLastActionAttemptTime())) {
                     continue;
                 }
-            }
 
-            // update store data
-            if ($storeEnabled) {
-                $this->store->readWatches();
-            }
-
-            // process plugins
-            foreach ($this->plugins as $plugin) {
-                $plugin->preReadWatches();
-                $plugin->readWatches();
-                $plugin->postReadWatches();
-
-                if ($plugin->getActionRequired()) {
-                    // be patient in failure scenarios
-                    if (!$plugin->getLastActionSuccess() && ((time() - $this->failedActionWaitTime) <= $plugin->getLastActionAttemptTime())) {
-                        continue;
-                    }
-
-                    // wait for settle time
-                    $settleTime = $plugin->getSettleTime();
-                    $actionRequiredTime = $plugin->getActionRequiredTime();
-                    if ($settleTime > 0 &&
-                        $actionRequiredTime > 0 &&
-                        ((time() - $actionRequiredTime) <= $settleTime)) {
-                        continue;
-                    }
-
-                    // wait for throttle time
-                    $throttleTime = $plugin->getThrottleTime();
-                    $lastActionAttemptTime = $plugin->getLastActionAttemptTime();
-                    if ($throttleTime > 0 &&
-                        $lastActionAttemptTime > 0 &&
-                        ((time() - $lastActionAttemptTime) <= $throttleTime)) {
-                        continue;
-                    }
-
-                    $plugin->invokeAction();
+                // wait for settle time
+                $settleTime = $plugin->getSettleTime();
+                $actionRequiredTime = $plugin->getActionRequiredTime();
+                if ($settleTime > 0 &&
+                    $actionRequiredTime > 0 &&
+                    ((time() - $actionRequiredTime) <= $settleTime)) {
+                    continue;
                 }
-            }
 
-            // update store data
-            if ($storeEnabled) {
-                $this->store->readWatches();
+                // wait for throttle time
+                $throttleTime = $plugin->getThrottleTime();
+                $lastActionAttemptTime = $plugin->getLastActionAttemptTime();
+                if ($throttleTime > 0 &&
+                    $lastActionAttemptTime > 0 &&
+                    ((time() - $lastActionAttemptTime) <= $throttleTime)) {
+                    continue;
+                }
+
+                $plugin->invokeAction();
             }
+        }
+
+        // update store data
+        if ($storeEnabled) {
+            $this->store->readWatches();
         }
     }
 
