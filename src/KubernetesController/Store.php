@@ -115,14 +115,14 @@ class Store
 
             // check for success
             $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps", 'POST', [], $data);
-            if (DotAccess::get($response, 'status') == 'Failure') {
+            if (DotAccess::get($response, 'status', null) == 'Failure') {
                 $this->controller->log(DotAccess::get($response, 'message'));
                 return;
             }
         }
 
         // load initial data
-        $data = DotAccess::get($event, 'object.data', null);
+        $data = DotAccess::get($response, 'data', null);
         if (!empty($data)) {
             if (is_array($data)) {
                 array_walk($data, function (&$item, $key) {
@@ -131,7 +131,7 @@ class Store
             }
 
             if (is_object($data)) {
-                foreach (DotAccess::get($event, 'object.data') as &$item) {
+                foreach ($data as &$item) {
                     $item = json_decode($item, true);
                 }
             }
@@ -168,7 +168,7 @@ class Store
     {
         return function ($event, $watch) {
             //$this->controller->logEvent($event);
-            switch ($event['type']) {
+            switch (DotAccess::get($event, 'type')) {
                 case 'ADDED':
                 case 'MODIFIED':
                     $data = DotAccess::get($event, 'object.data', null);
@@ -218,7 +218,7 @@ class Store
         ];
 
         $response = $kubernetesClient->request("/api/v1/namespaces/{$storeNamespace}/configmaps/{$storeName}", 'PATCH', [], $data);
-        if (DotAccess::get($response, 'status') == 'Failure') {
+        if (DotAccess::get($response, 'status', null) == 'Failure') {
             $this->controller->log(DotAccess::get($response, 'message'));
 
             return false;
