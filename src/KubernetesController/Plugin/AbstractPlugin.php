@@ -150,8 +150,9 @@ abstract class AbstractPlugin implements PluginInterface
     final protected function logEvent($event)
     {
         $objectPath = '/'.DotAccess::get($event, 'object.apiVersion');
-        if (DotAccess::get($event, 'object.metadata', null)) {
-            $objectPath .= '/namespaces/' . DotAccess::get($event, 'object.metadata.namespace');
+        $ns = DotAccess::get($event, 'object.metadata.namespace', null);
+        if ($ns) {
+            $objectPath .= '/namespaces/' . $ns;
         }
         $objectPath .= '/'. DotAccess::get($event, 'object.kind');
         $objectPath .= '/'. DotAccess::get($event, 'object.metadata.name');
